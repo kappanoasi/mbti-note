@@ -128,6 +128,48 @@
   .tabs button.on{background:var(--accent);color:#fff;border-color:var(--accent);}
   .hint{font-size:11px;color:var(--sub);margin-top:18px;line-height:1.7;}
   input[type=file]{display:none;}
+  /* テスト */
+  .test-start{padding:10px 4px;}
+  .ts-h{font-size:18px;margin:6px 0;}
+  .ts-d{font-size:13px;color:var(--sub);line-height:1.7;margin:0 0 14px;}
+  .ts-name{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:15px;width:100%;background:#fcfbfe;}
+  .ts-name:focus{outline:none;border-color:var(--accent);}
+  #testStartBtn{margin-top:14px;}
+  .quiz-top{display:flex;align-items:center;gap:10px;position:sticky;top:0;background:var(--card);padding:8px 0 10px;z-index:5;}
+  .prog-bar{flex:1;height:9px;background:#ececf2;border-radius:6px;overflow:hidden;}
+  .prog-fill{height:100%;background:linear-gradient(90deg,#88619a,#f25e62);border-radius:6px;transition:width .2s;}
+  .q{padding:14px 2px;border-bottom:1px solid var(--line);}
+  .q-t{font-size:14px;font-weight:600;line-height:1.55;margin-bottom:11px;}
+  .q-n{display:inline-block;min-width:22px;color:var(--sub);font-weight:800;font-size:12px;}
+  .likert-wrap{display:flex;align-items:center;justify-content:center;gap:7px;}
+  .likert{display:flex;align-items:center;gap:9px;}
+  .lk{width:var(--sz);height:var(--sz);min-width:var(--sz);border-radius:50%;border:2px solid var(--col);background:#fff;padding:0;}
+  .lk.sel{background:var(--col);box-shadow:0 0 0 3px rgba(136,97,154,.18);}
+  .lk-end{font-size:10px;color:var(--sub);white-space:nowrap;}
+  .lk-end.agree{color:#2c9d6b;}
+  .quiz-foot{position:sticky;bottom:0;background:var(--card);padding:12px 0;margin-top:6px;}
+  #seeResult{width:100%;padding:13px;font-size:15px;}
+  #seeResult:disabled{opacity:.45;cursor:default;}
+  .res-actions{display:flex;flex-direction:column;gap:8px;}
+  .res-actions button{padding:12px;font-size:14px;}
+  .res-link{display:flex;gap:8px;margin-top:10px;}
+  .res-link select{flex:1;min-width:0;font-family:inherit;font-size:13px;padding:9px;border-radius:10px;border:1px solid var(--line);background:#fff;}
+  /* ズレ */
+  .gap-box{background:#fff7f3;border:1px solid #f3d7cb;border-radius:12px;padding:12px 14px;margin-bottom:14px;}
+  .gap-row{display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 0;border-bottom:1px dashed #f0ddd4;flex-wrap:wrap;}
+  .gap-ax{font-weight:700;min-width:74px;}
+  .gap-v{color:var(--sub);} .gap-v b{color:var(--ink);}
+  .gap-mk{margin-left:auto;}
+  .gap-verdict{font-size:12.5px;font-weight:700;margin-top:9px;color:#b3502f;}
+  /* シェア画像モーダル */
+  #imgModal{display:none;position:fixed;inset:0;z-index:120;align-items:center;justify-content:center;padding:20px;}
+  .im-back{position:absolute;inset:0;background:rgba(20,15,30,.6);}
+  .im-box{position:relative;background:#fff;border-radius:16px;padding:14px;max-width:380px;width:100%;max-height:90vh;overflow:auto;text-align:center;}
+  .im-box img{width:100%;border-radius:10px;display:block;}
+  .im-act{display:flex;gap:8px;margin-top:10px;}
+  .im-dl{flex:1;text-decoration:none;text-align:center;background:var(--accent);color:#fff;font-weight:700;padding:10px;border-radius:10px;font-size:14px;}
+  .im-close{background:#fff;color:var(--ink);border:1px solid var(--line);font-weight:600;}
+  .im-hint{font-size:11px;color:var(--sub);margin-top:8px;}
   #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);
     background:#2b2b33;color:#fff;font-size:13px;font-weight:700;padding:10px 18px;border-radius:22px;
     box-shadow:0 4px 16px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:99;}
@@ -143,6 +185,7 @@
       <button id="tabEdit" class="on">編集</button>
       <button id="tabCmp">比較</button>
       <button id="tabCompat">相性</button>
+      <button id="tabTest">診断</button>
     </div>
     <button class="ghost mini" id="btnExport">書き出し</button>
     <button class="ghost mini" id="btnImport">読み込み</button>
@@ -462,6 +505,7 @@ function renderRoster(){
 function renderDetail(){
   if(mode==='compare'){ renderCompare(); return; }
   if(mode==='compat'){ renderCompat(); return; }
+  if(mode==='test'){ renderTest(); return; }
   const p=state.people.find(x=>x.id===selId);
   if(!p){ elDetail.innerHTML='<div class="empty">左の名簿から人を選ぶか、新しく追加してください。</div>'; return; }
 
@@ -472,6 +516,7 @@ function renderDetail(){
       <div class="meta"><div class="tname"></div><div class="grp"></div><div class="desc"></div></div>
     </div>
     <div class="clarity-wrap"><span class="clarity-badge" id="clarityBadge"></span></div>
+    <div id="gapBox"></div>
 
     <div class="diag">
       <button class="diag-toggle" id="diagToggle"></button>
@@ -541,6 +586,8 @@ function updateDynamic(p){
   document.getElementById('cogSection').innerHTML=cogHTML(p);
   document.getElementById('altSection').innerHTML=altHTML(p);
   document.getElementById('diagBody').innerHTML=generateDiag(p);
+  const gb=document.getElementById('gapBox'); gb.innerHTML=gapPanelHTML(p);
+  const gc=document.getElementById('gapClear'); if(gc) gc.onclick=()=>{ delete p.test; save(); render(); };
   paintDiagToggle();
 }
 
@@ -642,16 +689,223 @@ function paintCompat(){
   document.getElementById('copyPairBtn').onclick=()=>copyText(aiPromptPair(a,b));
 }
 
+/* ---------- 自己診断テスト（60問） ---------- */
+const RIGHTPOLE={mind:'I',energy:'S',nature:'F',tactics:'P',identity:'T'};
+const QBANK={
+  mind:[
+    {s:'E',t:'初対面の人とでもすぐ打ち解けて話せる'},
+    {s:'I',t:'一人で静かに過ごす時間がないと消耗する'},
+    {s:'E',t:'大人数の集まりや飲み会はむしろ元気が出る'},
+    {s:'I',t:'大勢でいると、楽しくても後でどっと疲れる'},
+    {s:'E',t:'考えるより先に、話しながら考えを整理する'},
+    {s:'I',t:'発言する前に、頭の中で十分考えてから話す'},
+    {s:'E',t:'週末は家にこもるより、外で人と過ごしたい'},
+    {s:'I',t:'親しい少人数といる方が、大人数より心地いい'},
+    {s:'E',t:'知らない人にも自分から話しかけるのは苦じゃない'},
+    {s:'I',t:'自分の考えや気持ちは、すぐには人に話さない方だ'},
+    {s:'E',t:'一人が続くと退屈して、人に会いたくなる'},
+    {s:'I',t:'にぎやかな場より、静かな環境の方が落ち着く'},
+  ],
+  energy:[
+    {s:'N',t:'物事はまず「全体像」や「意味」から考える'},
+    {s:'S',t:'抽象的な理論より、具体的で実際的な話が好きだ'},
+    {s:'N',t:'「もし〜だったら」と可能性や空想をよく巡らせる'},
+    {s:'S',t:'目の前の事実やデータを重視して判断する'},
+    {s:'N',t:'細かい事実より、その裏のパターンや理屈に惹かれる'},
+    {s:'S',t:'「実際どうなのか」がはっきりしないと落ち着かない'},
+    {s:'N',t:'現実の話より、アイデアや未来の話にワクワクする'},
+    {s:'S',t:'今ここで起きていることに、関心が向きやすい'},
+    {s:'N',t:'ありふれた物事にも、隠れた意味を見出そうとする'},
+    {s:'S',t:'細部やディテールによく気がつく方だ'},
+    {s:'N',t:'説明書を読むより、仕組みを想像して試す方だ'},
+    {s:'S',t:'地に足のついた、現実的な計画を好む'},
+  ],
+  nature:[
+    {s:'T',t:'物事は感情より、論理と筋道で判断する'},
+    {s:'F',t:'決断のとき、それが人にどう影響するかを強く考える'},
+    {s:'T',t:'議論では、気持ちより正しさ・公平さを優先する'},
+    {s:'F',t:'正しさより、その場の調和や相手の気持ちを大事にする'},
+    {s:'T',t:'決断では効率や合理性をいちばん重視する'},
+    {s:'F',t:'人が落ち込んでいると、自分まで気持ちが引っ張られる'},
+    {s:'T',t:'批判でも、内容が正しければ素直に受け入れる'},
+    {s:'F',t:'理屈で正しくても、冷たい言い方には抵抗を感じる'},
+    {s:'T',t:'客観的な事実の方が、感情的な話より信頼できる'},
+    {s:'F',t:'相手に共感し、寄り添うのが自然にできる'},
+    {s:'T',t:'必要なら、人に厳しい指摘をするのもためらわない'},
+    {s:'F',t:'対立や言い争いは、できるだけ避けたい'},
+  ],
+  tactics:[
+    {s:'J',t:'物事は前もって計画を立ててから進めたい'},
+    {s:'P',t:'計画を細かく決めるより、流れに任せて動きたい'},
+    {s:'J',t:'やるべきことを早めに片付けないと落ち着かない'},
+    {s:'P',t:'予定に縛られるより、自由に選べる状態が好きだ'},
+    {s:'J',t:'予定や締切がきっちり決まっている方が安心する'},
+    {s:'P',t:'締切は近づいてから一気にやる方だ'},
+    {s:'J',t:'身の回りは整理整頓されている方が好きだ'},
+    {s:'P',t:'急な予定変更や思いつきの行動も楽しめる'},
+    {s:'J',t:'一度決めたことは、最後までやり通したい'},
+    {s:'P',t:'きっちり決めると、窮屈に感じてしまう'},
+    {s:'J',t:'その日やることをリスト化して進めるのが好きだ'},
+    {s:'P',t:'選択肢は開いたまま、ぎりぎりまで決めたくない'},
+  ],
+  identity:[
+    {s:'A',t:'自分の能力や判断に、おおむね自信がある'},
+    {s:'T',t:'些細なことでも、後から「ああすれば」と気に病む'},
+    {s:'A',t:'失敗してもあまり引きずらず、すぐ切り替えられる'},
+    {s:'T',t:'自分に厳しく、完璧でないと満足できない'},
+    {s:'A',t:'他人の評価は、それほど気にならない'},
+    {s:'T',t:'他人にどう思われているかが、つい気になる'},
+    {s:'A',t:'プレッシャーがかかっても落ち着いていられる'},
+    {s:'T',t:'ストレスや不安を感じやすい方だ'},
+    {s:'A',t:'自分の選んだ道に、おおむね満足している'},
+    {s:'T',t:'成功しても、「まだ足りない」と感じてしまう'},
+    {s:'A',t:'細かいことでくよくよ悩むことは少ない'},
+    {s:'T',t:'気分の浮き沈みが大きい方だ'},
+  ],
+};
+const QUESTIONS=[];
+for(let k=0;k<12;k++){ ['mind','energy','nature','tactics','identity'].forEach(d=>{ const it=QBANK[d][k]; QUESTIONS.push({d,side:it.s,t:it.t}); }); }
+let testStage='start', testAnswers=[], testName='', testResultV=null;
+
+function scoreTest(ans){
+  const sums={mind:0,energy:0,nature:0,tactics:0,identity:0};
+  QUESTIONS.forEach((q,i)=>{ const pos=ans[i]; if(pos==null) return; const a=3-pos;
+    sums[q.d]+= (q.side===RIGHTPOLE[q.d]?1:-1)*a; });
+  const v={};
+  for(const k in sums){ v[k]=Math.round(Math.max(0,Math.min(100, 50+(sums[k]/36)*50))); }
+  return v;
+}
+function likertHTML(i){
+  const cfg=[[27,'#2c9d6b'],[22,'#5cb791'],[17,'#a7d4bf'],[14,'#cfcdd8'],[17,'#bda9cb'],[22,'#9a7eb3'],[27,'#7a5a96']];
+  let s=''; for(let p=0;p<7;p++){ s+=`<button class="lk" data-i="${i}" data-pos="${p}" style="--sz:${cfg[p][0]}px;--col:${cfg[p][1]}"></button>`; }
+  return s;
+}
+function renderTest(){ if(testStage==='quiz') return renderQuiz(); if(testStage==='result') return renderTestResult(); return renderTestStart(); }
+function renderTestStart(){
+  elDetail.innerHTML=`<div class="test-start">
+    <h3 class="ts-h">MBTI 自己診断テスト</h3>
+    <p class="ts-d">全${QUESTIONS.length}問・約8分。直感でテンポよく答えてOK。結果はこのアプリの全機能（詳しい診断・認知機能・相性）にそのまま使えます。</p>
+    <input class="nameInput ts-name" id="testName" placeholder="診断する人の名前（自分なら自分の名前）">
+    <button id="testStartBtn">テストを始める</button>
+    <p class="hint">※ 回答は端末内だけで処理されます（ネットには送りません）。</p>
+  </div>`;
+  document.getElementById('testStartBtn').onclick=()=>{ testName=document.getElementById('testName').value.trim();
+    testAnswers=new Array(QUESTIONS.length).fill(null); testStage='quiz'; renderTest(); window.scrollTo(0,0); };
+}
+function renderQuiz(){
+  const rows=QUESTIONS.map((q,i)=>`<div class="q"><div class="q-t"><span class="q-n">${i+1}</span>${q.t}</div>
+    <div class="likert-wrap"><span class="lk-end agree">そう思う</span><div class="likert">${likertHTML(i)}</div><span class="lk-end">思わない</span></div></div>`).join('');
+  const done=testAnswers.filter(a=>a!=null).length;
+  elDetail.innerHTML=`<div class="quiz-top"><button class="ghost mini" id="quizBack">← 戻る</button>
+      <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:${done/QUESTIONS.length*100}%"></div></div></div>
+    <div id="quizList">${rows}</div>
+    <div class="quiz-foot"><button id="seeResult" ${done<QUESTIONS.length?'disabled':''}>結果を見る（<span id="doneCount">${done}</span>/${QUESTIONS.length}）</button></div>`;
+  testAnswers.forEach((a,i)=>{ if(a!=null){ const b=elDetail.querySelector(`.lk[data-i="${i}"][data-pos="${a}"]`); if(b) b.classList.add('sel'); } });
+  document.getElementById('quizList').onclick=e=>{ const b=e.target.closest('.lk'); if(!b) return;
+    const i=+b.dataset.i, pos=+b.dataset.pos;
+    b.parentElement.querySelectorAll('.lk').forEach(x=>x.classList.remove('sel')); b.classList.add('sel');
+    testAnswers[i]=pos; updateQuizProgress(); };
+  document.getElementById('quizBack').onclick=()=>{ testStage='start'; renderTest(); };
+  document.getElementById('seeResult').onclick=()=>{ if(testAnswers.some(a=>a==null)){ alert('未回答の質問があります'); return; }
+    testResultV=scoreTest(testAnswers); testStage='result'; renderTest(); window.scrollTo(0,0); };
+}
+function updateQuizProgress(){
+  const done=testAnswers.filter(a=>a!=null).length;
+  document.getElementById('doneCount').textContent=done;
+  document.getElementById('progFill').style.width=(done/QUESTIONS.length*100)+'%';
+  document.getElementById('seeResult').disabled = done<QUESTIONS.length;
+}
+function renderTestResult(){
+  const v=testResultV, tp={name:testName||'診断結果', memo:'', v};
+  const t=typeCode(tp), g=groupOf(t.four), col=cssv(GROUPS[g]), tn=TYPES[t.four], cl=clarity(tp);
+  elDetail.innerHTML=`
+    <div class="result" style="background:linear-gradient(135deg,${col},${shade(col,-18)})">
+      <div class="code">${t.full}</div>
+      <div class="meta"><div class="tname">${tn[0]}・${IDENT[t.id][0]}</div><div class="grp">${g}グループ ／ くっきり度 ${cl.score}</div><div class="desc">${tn[1]}</div></div>
+    </div>
+    <div class="diag-body" style="display:block;margin-bottom:8px">${generateDiag(tp)}</div>
+    <div class="sec-title">この結果をどうする？</div>
+    <div class="res-actions">
+      <button id="resShare">📷 シェア画像を作る</button>
+      <button id="resNew">＋ 新しい人として名簿に追加</button>
+    </div>
+    <div class="res-link"><select id="linkSel"><option value="">― 既存の人に紐付けて見立てと比較 ―</option>${state.people.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select><button class="ghost" id="resLink">紐付け</button></div>
+    <div class="actions"><button class="ghost" id="resRetry">もう一度やる</button></div>`;
+  document.getElementById('resShare').onclick=()=>showImageModal(makeShareImage(tp.name,v));
+  document.getElementById('resNew').onclick=()=>{ const np=newPerson(tp.name); np.v={...v}; np.source='test'; state.people.push(np); selId=np.id; save(); setTab('edit'); render(); window.scrollTo(0,0); };
+  document.getElementById('resLink').onclick=()=>{ const id=document.getElementById('linkSel').value; if(!id){ alert('紐付ける人を選んでね'); return; }
+    const p=state.people.find(x=>x.id===id); p.test={...v}; selId=id; save(); setTab('edit'); render(); window.scrollTo(0,0); toast('本人診断を紐付けた！見立てとの差を表示中'); };
+  document.getElementById('resRetry').onclick=()=>{ testStage='start'; testResultV=null; renderTest(); };
+}
+
+/* ---- シェア画像（canvas） ---- */
+function roundRect(x,rx,ry,w,h,r){ x.beginPath(); x.moveTo(rx+r,ry); x.arcTo(rx+w,ry,rx+w,ry+h,r); x.arcTo(rx+w,ry+h,rx,ry+h,r); x.arcTo(rx,ry+h,rx,ry,r); x.arcTo(rx,ry,rx+w,ry,r); x.closePath(); }
+function makeShareImage(name,v){
+  const t=typeCode({v}), g=groupOf(t.four), col=cssv(GROUPS[g]), tn=TYPES[t.four], cl=clarity({v});
+  const W=720,H=940, c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d');
+  const gr=x.createLinearGradient(0,0,W,H); gr.addColorStop(0,col); gr.addColorStop(1,shade(col,-24)); x.fillStyle=gr; x.fillRect(0,0,W,H);
+  x.fillStyle='rgba(255,255,255,0.96)'; roundRect(x,40,40,W-80,H-80,30); x.fill();
+  x.textAlign='center';
+  x.fillStyle='#9a98a6'; x.font='bold 24px sans-serif'; x.fillText('MBTI 推定ノート', W/2, 108);
+  if(name){ x.fillStyle='#2b2b33'; x.font='bold 30px sans-serif'; x.fillText(name, W/2, 152); }
+  x.fillStyle=col; x.font='900 96px sans-serif'; x.fillText(t.full, W/2, 250);
+  x.fillStyle='#2b2b33'; x.font='bold 40px sans-serif'; x.fillText(`${tn[0]}・${IDENT[t.id][0]}`, W/2, 312);
+  x.fillStyle='#7a7a88'; x.font='bold 23px sans-serif'; x.fillText(`${g}グループ ／ くっきり度 ${cl.score}`, W/2, 352);
+  let y=430;
+  AXES.forEach(ax=>{ const d=domFor(ax,v[ax.key]), c2=cssv(ax.cssc);
+    x.textAlign='left'; x.fillStyle='#2b2b33'; x.font='bold 22px sans-serif';
+    x.fillText(`${ax.title}：${d.name} ${d.pct}%`, 95, y-10);
+    x.fillStyle='#ececf2'; roundRect(x,95,y,W-190,14,7); x.fill();
+    const px=95+(W-190)*(v[ax.key]/100);
+    x.fillStyle='#fff'; x.beginPath(); x.arc(px,y+7,12,0,7); x.fill(); x.strokeStyle=c2; x.lineWidth=4; x.stroke();
+    y+=86;
+  });
+  x.textAlign='center'; x.fillStyle='#b3b1bf'; x.font='19px sans-serif'; x.fillText('kappanoasi.github.io/mbti-note', W/2, H-66);
+  return c.toDataURL('image/png');
+}
+function showImageModal(url){
+  let m=document.getElementById('imgModal');
+  if(!m){ m=document.createElement('div'); m.id='imgModal'; document.body.appendChild(m); }
+  m.innerHTML=`<div class="im-back"></div><div class="im-box"><img src="${url}" alt="診断結果">
+    <div class="im-act"><a class="im-dl" href="${url}" download="mbti_result.png">画像を保存</a><button class="im-close">閉じる</button></div>
+    <div class="im-hint">スマホは画像を長押し→「写真に追加」でも保存できる</div></div>`;
+  m.style.display='flex';
+  m.querySelector('.im-back').onclick=()=>m.style.display='none';
+  m.querySelector('.im-close').onclick=()=>m.style.display='none';
+}
+
+/* ---- 見立て vs 本人診断 のズレ ---- */
+function gapPanelHTML(p){
+  if(!p.test) return '';
+  const est=p.v, tst=p.test, eT=typeCode({v:est}).full, tT=typeCode({v:tst}).full;
+  let rows='', match=0;
+  AXES.forEach((ax,i)=>{
+    const ed=domFor(ax,est[ax.key]), td=domFor(ax,tst[ax.key]);
+    const same=letterFor(ax,est[ax.key])===letterFor(ax,tst[ax.key]);
+    if(i<4 && same) match++;
+    rows+=`<div class="gap-row"><span class="gap-ax">${ax.title}</span><span class="gap-v">見立て <b>${ed.name}${ed.pct}%</b></span><span class="gap-v">本人 <b>${td.name}${td.pct}%</b></span><span class="gap-mk">${same?'🟢':'🔴'}</span></div>`;
+  });
+  let verdict;
+  if(match>=4) verdict='見立てドンピシャ。4軸すべて一致してた。';
+  else if(match===3) verdict='見立てはかなり当たってた（4軸中3つ一致）。';
+  else if(match===2) verdict='半分当たり・半分ズレ（4軸中2つ一致）。';
+  else verdict='本人診断とけっこう違った。先入観が入ってたかも？';
+  return `<div class="gap-box"><div class="sec-title" style="margin-top:0">見立て vs 本人診断 <span class="sub">あなたの推定 ${eT} ／ 本人テスト ${tT}</span></div>${rows}<div class="gap-verdict">${verdict}</div>
+    <button class="ghost mini" id="gapClear" style="margin-top:8px">本人診断の紐付けを外す</button></div>`;
+}
+
 function render(){ renderRoster(); renderDetail(); }
 
 /* ---------- top bar ---------- */
 function setTab(m){ mode=m;
   document.getElementById('tabEdit').classList.toggle('on',m==='edit');
   document.getElementById('tabCmp').classList.toggle('on',m==='compare');
-  document.getElementById('tabCompat').classList.toggle('on',m==='compat'); }
+  document.getElementById('tabCompat').classList.toggle('on',m==='compat');
+  document.getElementById('tabTest').classList.toggle('on',m==='test'); }
 document.getElementById('tabEdit').onclick=()=>{ setTab('edit'); render(); };
 document.getElementById('tabCmp').onclick=()=>{ setTab('compare'); render(); };
 document.getElementById('tabCompat').onclick=()=>{ setTab('compat'); render(); };
+document.getElementById('tabTest').onclick=()=>{ setTab('test'); if(mode==='test'){} render(); };
 document.getElementById('btnAdd').onclick=()=>{ const p=newPerson('新しい人 '+(state.people.length+1));
   state.people.push(p); selId=p.id; setTab('edit'); save(); render();
   setTimeout(()=>{ const n=document.getElementById('nameI'); if(n){n.focus();n.select();} },30); };
