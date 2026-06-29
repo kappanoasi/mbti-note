@@ -142,6 +142,12 @@
   .gmtx td{padding:7px 10px;border:1px solid var(--line);text-align:center;font-weight:800;color:#3a3a44;}
   .gmtx td.diag{background:#faf9fd;color:#cfcdd8;}
   .gpair{font-size:12.5px;margin-top:8px;}
+  .rank{margin:6px 0 14px;padding:0;list-style:none;counter-reset:r;}
+  .rank li{display:flex;align-items:center;gap:9px;font-size:12.8px;padding:6px 2px;border-bottom:1px dashed var(--line);counter-increment:r;}
+  .rank li::before{content:counter(r);min-width:21px;height:21px;display:inline-flex;align-items:center;justify-content:center;background:var(--accent);color:#fff;border-radius:50%;font-size:11px;font-weight:800;flex-shrink:0;}
+  .rank li:nth-child(1)::before{background:#e3b341;} .rank li:nth-child(2)::before{background:#b6b6c2;} .rank li:nth-child(3)::before{background:#cd8b5a;}
+  .rank .rk-n{flex:1;font-weight:600;}
+  .rank .rk-s{font-weight:900;color:var(--accent);}
   .tabs{display:flex;gap:6px;}
   .tabs button{background:#fff;color:var(--sub);border:1px solid var(--line);font-weight:700;}
   .tabs button.on{background:var(--accent);color:#fff;border-color:var(--accent);}
@@ -732,18 +738,22 @@ function paintGroup(){
   const pairs=[];
   for(let i=0;i<sel.length;i++) for(let j=i+1;j<sel.length;j++){ pairs.push({a:sel[i],b:sel[j],s:compatScores(sel[i],sel[j]).smooth}); }
   const avg=Math.round(pairs.reduce((t,p)=>t+p.s,0)/pairs.length);
-  const best=pairs.reduce((m,p)=>p.s>m.s?p:m), worst=pairs.reduce((m,p)=>p.s<m.s?p:m);
   const head='<th></th>'+sel.map(p=>`<th>${esc(shortName(p.name))}</th>`).join('');
   let body='';
   sel.forEach((r,ri)=>{ let row=`<th>${esc(shortName(r.name))}</th>`;
     sel.forEach((c,ci)=>{ if(ri===ci) row+='<td class="diag">—</td>';
       else { const s=compatScores(r,c).smooth; row+=`<td style="background:${scoreColor(s)}">${s}</td>`; } });
     body+=`<tr>${row}</tr>`; });
+  const pairRank=[...pairs].sort((a,b)=>b.s-a.s);
+  const fit=sel.map(p=>{ const others=sel.filter(o=>o.id!==p.id);
+    return {p, av:Math.round(others.reduce((t,o)=>t+compatScores(p,o).smooth,0)/others.length)}; }).sort((a,b)=>b.av-a.av);
+  const pairList=pairRank.map(pr=>`<li><span class="rk-n">${esc(pr.a.name)} × ${esc(pr.b.name)}</span><span class="rk-s">${pr.s}</span></li>`).join('');
+  const fitList=fit.map(f=>`<li><span class="rk-n">${esc(f.p.name)}</span><span class="rk-s">${f.av}</span></li>`).join('');
   gm.innerHTML=`<div class="gsum">グループ平均 噛み合い度 <b>${avg}</b>（${sel.length}人・全${pairs.length}ペア）</div>
     <div class="gmtx-wrap"><table class="gmtx"><tr>${head}</tr>${body}</table></div>
-    <div class="gpair">🟢 一番噛み合う：<b>${esc(best.a.name)} × ${esc(best.b.name)}</b>（${best.s}）</div>
-    <div class="gpair">⚠️ 一番すり合わせ要：<b>${esc(worst.a.name)} × ${esc(worst.b.name)}</b>（${worst.s}）</div>
-    <div class="hint">数字＝噛み合い度（似てて楽な度合い）。低くても補い合えれば良コンビ。掘り下げは「ペア相性」やAI深掘りで。</div>`;
+    <div class="sec-title" style="margin-top:16px">ペア相性ランキング</div><ol class="rank">${pairList}</ol>
+    <div class="sec-title">グループ馴染み度ランキング <span class="sub">高い＝みんなと似て馴染む／低い＝独自色が強い</span></div><ol class="rank">${fitList}</ol>
+    <div class="hint">数字＝噛み合い度。低い＝悪いではなく「違う」だけ（補い合えれば良コンビ）。深掘りは「ペア相性」やAI深掘りで。</div>`;
 }
 function paintCompat(){
   const a=state.people.find(x=>x.id===compatA), b=state.people.find(x=>x.id===compatB);
@@ -843,14 +853,16 @@ const QBANK={
 };
 const QUESTIONS=[];
 for(let k=0;k<12;k++){ ['mind','energy','nature','tactics','identity'].forEach(d=>{ const it=QBANK[d][k]; QUESTIONS.push({d,side:it.s,t:it.t}); }); }
-let testStage='start', testAnswers=[], testName='', testResultV=null;
+const QUESTIONS_QUICK=[]; // 各軸 先頭4問（2問ずつ両方向）＝20問
+for(let k=0;k<4;k++){ ['mind','energy','nature','tactics','identity'].forEach(d=>{ const it=QBANK[d][k]; QUESTIONS_QUICK.push({d,side:it.s,t:it.t}); }); }
+let testStage='start', testAnswers=[], testName='', testResultV=null, testLen='full', testQ=QUESTIONS;
 
-function scoreTest(ans){
-  const sums={mind:0,energy:0,nature:0,tactics:0,identity:0};
-  QUESTIONS.forEach((q,i)=>{ const pos=ans[i]; if(pos==null) return; const a=3-pos;
+function scoreTest(ans, qs){
+  const sums={mind:0,energy:0,nature:0,tactics:0,identity:0}, cnt={mind:0,energy:0,nature:0,tactics:0,identity:0};
+  qs.forEach((q,i)=>{ cnt[q.d]++; const pos=ans[i]; if(pos==null) return; const a=3-pos;
     sums[q.d]+= (q.side===RIGHTPOLE[q.d]?1:-1)*a; });
   const v={};
-  for(const k in sums){ v[k]=Math.round(Math.max(0,Math.min(100, 50+(sums[k]/36)*50))); }
+  for(const k in sums){ const max=cnt[k]*3; v[k]=Math.round(Math.max(0,Math.min(100, 50+(max?sums[k]/max:0)*50))); }
   return v;
 }
 function likertHTML(i){
@@ -860,24 +872,35 @@ function likertHTML(i){
 }
 function renderTest(){ if(testStage==='quiz') return renderQuiz(); if(testStage==='result') return renderTestResult(); return renderTestStart(); }
 function renderTestStart(){
+  const ql=testLen==='quick'?QUESTIONS_QUICK.length:QUESTIONS.length;
+  const mins=testLen==='quick'?'2〜3分':'約8分';
+  const note=testLen==='quick'?'<br>※簡易版は各軸4問。サッと知りたい人向け（精度はフルより少し粗め）。':'<br>※各軸12問・逆質問入りで、本家相当の精度。';
   elDetail.innerHTML=`<div class="test-start">
     <h3 class="ts-h">MBTI 自己診断テスト</h3>
-    <p class="ts-d">全${QUESTIONS.length}問・約8分。直感でテンポよく答えてOK。結果はこのアプリの全機能（詳しい診断・認知機能・相性）にそのまま使えます。</p>
+    <div class="tabs" style="margin:6px 0 12px">
+      <button id="lenQuick" class="${testLen==='quick'?'on':''}">簡易（${QUESTIONS_QUICK.length}問）</button>
+      <button id="lenFull" class="${testLen==='full'?'on':''}">フル（${QUESTIONS.length}問）</button>
+    </div>
+    <p class="ts-d">${ql}問・${mins}。直感でテンポよく答えてOK。結果はアプリの全機能（詳しい診断・認知機能・相性）にそのまま使えます。${note}</p>
     <input class="nameInput ts-name" id="testName" placeholder="診断する人の名前（自分なら自分の名前）">
     <button id="testStartBtn">テストを始める</button>
     <p class="hint">※ 回答は端末内だけで処理されます（ネットには送りません）。</p>
   </div>`;
+  document.getElementById('testName').value=testName||'';
+  document.getElementById('lenQuick').onclick=()=>{ testName=document.getElementById('testName').value; testLen='quick'; renderTestStart(); };
+  document.getElementById('lenFull').onclick=()=>{ testName=document.getElementById('testName').value; testLen='full'; renderTestStart(); };
   document.getElementById('testStartBtn').onclick=()=>{ testName=document.getElementById('testName').value.trim();
-    testAnswers=new Array(QUESTIONS.length).fill(null); testStage='quiz'; renderTest(); window.scrollTo(0,0); };
+    testQ = testLen==='quick'?QUESTIONS_QUICK:QUESTIONS;
+    testAnswers=new Array(testQ.length).fill(null); testStage='quiz'; renderTest(); window.scrollTo(0,0); };
 }
 function renderQuiz(){
-  const rows=QUESTIONS.map((q,i)=>`<div class="q"><div class="q-t"><span class="q-n">${i+1}</span>${q.t}</div>
+  const rows=testQ.map((q,i)=>`<div class="q"><div class="q-t"><span class="q-n">${i+1}</span>${q.t}</div>
     <div class="likert-wrap"><span class="lk-end agree">そう思う</span><div class="likert">${likertHTML(i)}</div><span class="lk-end">思わない</span></div></div>`).join('');
   const done=testAnswers.filter(a=>a!=null).length;
   elDetail.innerHTML=`<div class="quiz-top"><button class="ghost mini" id="quizBack">← 戻る</button>
-      <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:${done/QUESTIONS.length*100}%"></div></div></div>
+      <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:${done/testQ.length*100}%"></div></div></div>
     <div id="quizList">${rows}</div>
-    <div class="quiz-foot"><button id="seeResult" ${done<QUESTIONS.length?'disabled':''}>結果を見る（<span id="doneCount">${done}</span>/${QUESTIONS.length}）</button></div>`;
+    <div class="quiz-foot"><button id="seeResult" ${done<testQ.length?'disabled':''}>結果を見る（<span id="doneCount">${done}</span>/${testQ.length}）</button></div>`;
   testAnswers.forEach((a,i)=>{ if(a!=null){ const b=elDetail.querySelector(`.lk[data-i="${i}"][data-pos="${a}"]`); if(b) b.classList.add('sel'); } });
   document.getElementById('quizList').onclick=e=>{ const b=e.target.closest('.lk'); if(!b) return;
     const i=+b.dataset.i, pos=+b.dataset.pos;
@@ -885,13 +908,13 @@ function renderQuiz(){
     testAnswers[i]=pos; updateQuizProgress(); };
   document.getElementById('quizBack').onclick=()=>{ testStage='start'; renderTest(); };
   document.getElementById('seeResult').onclick=()=>{ if(testAnswers.some(a=>a==null)){ alert('未回答の質問があります'); return; }
-    testResultV=scoreTest(testAnswers); testStage='result'; renderTest(); window.scrollTo(0,0); };
+    testResultV=scoreTest(testAnswers, testQ); testStage='result'; renderTest(); window.scrollTo(0,0); };
 }
 function updateQuizProgress(){
   const done=testAnswers.filter(a=>a!=null).length;
   document.getElementById('doneCount').textContent=done;
-  document.getElementById('progFill').style.width=(done/QUESTIONS.length*100)+'%';
-  document.getElementById('seeResult').disabled = done<QUESTIONS.length;
+  document.getElementById('progFill').style.width=(done/testQ.length*100)+'%';
+  document.getElementById('seeResult').disabled = done<testQ.length;
 }
 function renderTestResult(){
   const v=testResultV, tp={name:testName||'診断結果', memo:'', v};
