@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>MBTI 推定ノート</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#88619a">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="MBTI推定">
 <style>
   :root{
     --bg:#f4f3f7; --card:#ffffff; --ink:#2b2b33; --sub:#7a7a88; --line:#e6e4ee;
@@ -123,6 +130,18 @@
   .cb-fill{height:100%;background:linear-gradient(90deg,#88619a,#f25e62);border-radius:6px;transition:width .15s;}
   .ca-row{display:flex;gap:9px;align-items:flex-start;font-size:12.7px;line-height:1.62;padding:8px 0;border-bottom:1px dashed var(--line);}
   .ca-mk{font-size:15px;flex-shrink:0;}
+  .radar{width:100%;max-width:290px;display:block;margin:4px auto 10px;}
+  .gchk-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+  .gchk{font-size:12.5px;font-weight:600;background:#f3eef8;border:1px solid var(--line);border-radius:9px;padding:6px 10px;display:flex;align-items:center;gap:5px;cursor:pointer;}
+  .gchk input{accent-color:var(--accent);width:15px;height:15px;}
+  .gsum{font-size:14px;font-weight:700;margin:4px 0 10px;}
+  .gsum b{font-size:21px;color:var(--accent);}
+  .gmtx-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;}
+  .gmtx{border-collapse:collapse;font-size:12px;margin:0 auto;}
+  .gmtx th{background:#f3eef8;color:var(--ink);font-weight:700;padding:6px 8px;border:1px solid var(--line);white-space:nowrap;}
+  .gmtx td{padding:7px 10px;border:1px solid var(--line);text-align:center;font-weight:800;color:#3a3a44;}
+  .gmtx td.diag{background:#faf9fd;color:#cfcdd8;}
+  .gpair{font-size:12.5px;margin-top:8px;}
   .tabs{display:flex;gap:6px;}
   .tabs button{background:#fff;color:var(--sub);border:1px solid var(--line);font-weight:700;}
   .tabs button.on{background:var(--accent);color:#fff;border-color:var(--accent);}
@@ -295,6 +314,7 @@ let selId = state.people[0] ? state.people[0].id : null;
 let mode = 'edit';
 let diagOpen = true;
 let compatA = null, compatB = null;
+let compatMode = 'pair', compatGroup = [];
 
 function load(){
   try{ const j=JSON.parse(localStorage.getItem(KEY)); if(j&&Array.isArray(j.people)) return j; }catch(e){}
@@ -377,17 +397,34 @@ function shade(hex,p){ let n=parseInt(hex.slice(1),16),r=n>>16&255,g=n>>8&255,b=
   const f=t=>Math.max(0,Math.min(255,Math.round(t+(t*p/100)))); return `rgb(${f(r)},${f(g)},${f(b)})`; }
 function axisLabelHTML(ax,val){ const d=domFor(ax,val), st=strength(d.pct);
   return `${ax.title}：<span class="pct">${d.pct}%</span> ${d.name}<span class="stag" style="background:${st.c}">${st.t}</span>`; }
+function radarSVG(p){
+  const fs=funcScores(p); const sc={}; fs.forEach(f=>sc[f.name]=f.score);
+  const order=['Ni','Ne','Si','Se','Ti','Te','Fi','Fe'];
+  const cx=120, cy=128, R=78;
+  const ang=i=>(-90+i*45)*Math.PI/180;
+  const pt=(i,r)=>[(cx+r*Math.cos(ang(i))).toFixed(1),(cy+r*Math.sin(ang(i))).toFixed(1)];
+  let grid='';
+  [25,50,75,100].forEach(rr=>{ const pts=order.map((_,i)=>pt(i,R*rr/100).join(',')).join(' ');
+    grid+=`<polygon points="${pts}" fill="none" stroke="#e6e4ee" stroke-width="1"/>`; });
+  let axes=''; order.forEach((_,i)=>{ const [x,y]=pt(i,R); axes+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#e6e4ee" stroke-width="1"/>`; });
+  const dpts=order.map((nm,i)=>pt(i,R*(sc[nm]||0)/100).join(',')).join(' ');
+  let dots='', labels='';
+  order.forEach((nm,i)=>{ const col=FCOLOR[nm]; const [dx,dy]=pt(i,R*(sc[nm]||0)/100); const [lx,ly]=pt(i,R+16);
+    dots+=`<circle cx="${dx}" cy="${dy}" r="2.8" fill="${col}"/>`;
+    labels+=`<text x="${lx}" y="${ly}" font-size="11" font-weight="800" fill="${col}" text-anchor="middle" dominant-baseline="middle">${nm}</text>`; });
+  return `<svg viewBox="0 0 240 256" class="radar">${grid}${axes}<polygon points="${dpts}" fill="rgba(136,97,154,.18)" stroke="#88619a" stroke-width="2"/>${dots}${labels}</svg>`;
+}
 function cogHTML(p){
   const fs=funcScores(p);
   const topP=fs.filter(f=>PERC.includes(f.name))[0];   // 知覚系トップ
   const topJ=fs.filter(f=>JUDG.includes(f.name))[0];   // 判断系トップ
-  const pair=[topP,topJ].sort((a,b)=>b.score-a.score).map(f=>`${f.name} ${FN[f.name][0]}`).join(' ／ ');
+  const pair=[topP,topJ].sort((a,b)=>b.raw-a.raw).map(f=>`${f.name} ${FN[f.name][0]}`).join(' ／ ');
   const rows=fs.map(f=>{ const col=FCOLOR[f.name];
     return `<div class="cog">
       <div class="cog-h"><span class="cog-nm" style="color:${col}">${f.name}　${FN[f.name][0]}</span><span class="cog-sc">${f.score}</span></div>
       <div class="cog-bar"><div class="cog-fill" style="width:${f.score}%;background:${col}"></div></div>
       <div class="cog-d">${FN[f.name][1]}</div></div>`; }).join('');
-  return `<div class="cog-top">軸となる2機能（知覚＋判断）：<b>${pair}</b></div>${rows}`;
+  return `<div class="cog-top">軸となる2機能（知覚＋判断）：<b>${pair}</b></div>${radarSVG(p)}${rows}`;
 }
 function altHTML(p){
   const c=altTypes(p);
@@ -659,13 +696,54 @@ function aiPromptPair(a,b){
 }
 function renderCompat(){
   if(state.people.length<2){ elDetail.innerHTML='<div class="empty">2人以上登録すると相性が見られます。<br>「編集」タブから人を追加してね。</div>'; return; }
+  elDetail.innerHTML=`<div class="tabs" style="margin-bottom:12px">
+      <button id="cmPair" class="${compatMode==='pair'?'on':''}">ペア相性</button>
+      <button id="cmGroup" class="${compatMode==='group'?'on':''}">グループ相性</button></div><div id="compatMain"></div>`;
+  document.getElementById('cmPair').onclick=()=>{ compatMode='pair'; renderCompat(); };
+  document.getElementById('cmGroup').onclick=()=>{ compatMode='group'; renderCompat(); };
+  if(compatMode==='group') renderCompatGroupInto(document.getElementById('compatMain'));
+  else renderCompatPairInto(document.getElementById('compatMain'));
+}
+function renderCompatPairInto(host){
   if(!state.people.find(x=>x.id===compatA)) compatA=state.people[0].id;
   if(!state.people.find(x=>x.id===compatB)) compatB=state.people[1].id;
   const opt=sel=>state.people.map(p=>`<option value="${p.id}" ${p.id===sel?'selected':''}>${esc(p.name)}</option>`).join('');
-  elDetail.innerHTML=`<div class="cmp-pick"><select id="selA">${opt(compatA)}</select><span class="cmp-x">×</span><select id="selB">${opt(compatB)}</select></div><div id="compatBody"></div>`;
+  host.innerHTML=`<div class="cmp-pick"><select id="selA">${opt(compatA)}</select><span class="cmp-x">×</span><select id="selB">${opt(compatB)}</select></div><div id="compatBody"></div>`;
   document.getElementById('selA').onchange=e=>{compatA=e.target.value; paintCompat();};
   document.getElementById('selB').onchange=e=>{compatB=e.target.value; paintCompat();};
   paintCompat();
+}
+function shortName(n){ return n.length>5 ? n.slice(0,5)+'…' : n; }
+function scoreColor(s){ if(s>=70) return '#d6f0e2'; if(s>=55) return '#fbf0d4'; return '#fadbd9'; }
+function renderCompatGroupInto(host){
+  compatGroup=compatGroup.filter(id=>state.people.find(p=>p.id===id));
+  if(compatGroup.length<2) compatGroup=state.people.map(p=>p.id);
+  const checks=state.people.map(p=>`<label class="gchk"><input type="checkbox" data-id="${p.id}" ${compatGroup.includes(p.id)?'checked':''}> ${esc(p.name)}</label>`).join('');
+  host.innerHTML=`<div class="sub" style="margin-bottom:8px">比較する人をチェック（3人以上で相関が見やすい）</div><div class="gchk-wrap">${checks}</div><div id="groupMain"></div>`;
+  host.querySelectorAll('.gchk input').forEach(ch=>ch.onchange=()=>{ const id=ch.dataset.id;
+    if(ch.checked){ if(!compatGroup.includes(id)) compatGroup.push(id); } else compatGroup=compatGroup.filter(x=>x!==id);
+    paintGroup(); });
+  paintGroup();
+}
+function paintGroup(){
+  const gm=document.getElementById('groupMain'); if(!gm) return;
+  const sel=state.people.filter(p=>compatGroup.includes(p.id));
+  if(sel.length<2){ gm.innerHTML='<div class="sub" style="margin-top:12px">2人以上にチェックを入れてね。</div>'; return; }
+  const pairs=[];
+  for(let i=0;i<sel.length;i++) for(let j=i+1;j<sel.length;j++){ pairs.push({a:sel[i],b:sel[j],s:compatScores(sel[i],sel[j]).smooth}); }
+  const avg=Math.round(pairs.reduce((t,p)=>t+p.s,0)/pairs.length);
+  const best=pairs.reduce((m,p)=>p.s>m.s?p:m), worst=pairs.reduce((m,p)=>p.s<m.s?p:m);
+  const head='<th></th>'+sel.map(p=>`<th>${esc(shortName(p.name))}</th>`).join('');
+  let body='';
+  sel.forEach((r,ri)=>{ let row=`<th>${esc(shortName(r.name))}</th>`;
+    sel.forEach((c,ci)=>{ if(ri===ci) row+='<td class="diag">—</td>';
+      else { const s=compatScores(r,c).smooth; row+=`<td style="background:${scoreColor(s)}">${s}</td>`; } });
+    body+=`<tr>${row}</tr>`; });
+  gm.innerHTML=`<div class="gsum">グループ平均 噛み合い度 <b>${avg}</b>（${sel.length}人・全${pairs.length}ペア）</div>
+    <div class="gmtx-wrap"><table class="gmtx"><tr>${head}</tr>${body}</table></div>
+    <div class="gpair">🟢 一番噛み合う：<b>${esc(best.a.name)} × ${esc(best.b.name)}</b>（${best.s}）</div>
+    <div class="gpair">⚠️ 一番すり合わせ要：<b>${esc(worst.a.name)} × ${esc(worst.b.name)}</b>（${worst.s}）</div>
+    <div class="hint">数字＝噛み合い度（似てて楽な度合い）。低くても補い合えれば良コンビ。掘り下げは「ペア相性」やAI深掘りで。</div>`;
 }
 function paintCompat(){
   const a=state.people.find(x=>x.id===compatA), b=state.people.find(x=>x.id===compatB);
@@ -919,6 +997,13 @@ document.getElementById('fileImport').onchange=e=>{ const f=e.target.files[0]; i
   rd.readAsText(f); };
 
 render();
+
+/* PWA: サービスワーカー登録（オフライン対応・https/localhostのみ動作） */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
