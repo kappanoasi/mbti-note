@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>MBTI 推定ノート</title>
+<style>
+  :root{
+    --bg:#f4f3f7; --card:#ffffff; --ink:#2b2b33; --sub:#7a7a88; --line:#e6e4ee;
+    --accent:#88619a; --shadow:0 2px 12px rgba(40,30,60,.08);
+    --c-mind:#4298b4; --c-energy:#e4ae3a; --c-nature:#33a474; --c-tactics:#88619a; --c-identity:#f25e62;
+    --g-analyst:#88619a; --g-diplomat:#33a474; --g-sentinel:#4298b4; --g-explorer:#e4ae3a;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic UI","Segoe UI",Meiryo,sans-serif;}
+  body{padding:max(12px,env(safe-area-inset-top)) 12px 40px;}
+  h1{font-size:19px;margin:0;letter-spacing:.02em;}
+  .topbar{max-width:1080px;margin:0 auto 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .topbar .grow{flex:1;}
+  .logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#88619a,#f25e62);
+    display:grid;place-items:center;color:#fff;font-weight:800;font-size:15px;}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:10px;font-size:13px;
+    padding:9px 13px;background:var(--accent);color:#fff;font-weight:700;transition:filter .15s,transform .05s;}
+  button:hover{filter:brightness(1.06);} button:active{transform:translateY(1px);}
+  button.ghost{background:#fff;color:var(--ink);border:1px solid var(--line);font-weight:600;}
+  button.mini{padding:5px 9px;font-size:12px;border-radius:8px;}
+  .app{max-width:1080px;margin:0 auto;display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start;}
+  @media(max-width:760px){ .app{grid-template-columns:1fr;} }
+
+  .panel{background:var(--card);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;}
+  .roster-head{display:flex;align-items:center;gap:8px;padding:13px 14px;border-bottom:1px solid var(--line);}
+  .roster-head h2{font-size:14px;margin:0;flex:1;color:var(--sub);font-weight:700;letter-spacing:.04em;}
+  .roster-list{max-height:62vh;overflow:auto;}
+  @media(max-width:760px){ .roster-list{max-height:34vh;} }
+  .person{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);cursor:pointer;}
+  .person:hover{background:#faf9fd;}
+  .person.active{background:#f3eef8;box-shadow:inset 3px 0 0 var(--accent);}
+  .person .nm{flex:1;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .badge{font-size:11px;font-weight:800;color:#fff;padding:3px 7px;border-radius:7px;letter-spacing:.03em;white-space:nowrap;}
+  .person .del{opacity:0;color:var(--sub);background:none;padding:2px 6px;font-size:16px;font-weight:700;}
+  .person:hover .del{opacity:.6;} .person .del:hover{opacity:1;color:#e0484d;}
+  .empty{padding:26px 18px;color:var(--sub);font-size:13px;line-height:1.7;text-align:center;}
+
+  .detail{padding:18px;}
+  .namerow{display:flex;gap:10px;align-items:center;margin-bottom:6px;}
+  .nameInput{flex:1;font-size:20px;font-weight:800;border:none;border-bottom:2px solid transparent;
+    padding:4px 2px;background:none;color:var(--ink);}
+  .nameInput:focus{outline:none;border-bottom-color:var(--accent);}
+  .memo{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:13px;
+    color:var(--ink);resize:vertical;min-height:40px;margin-bottom:8px;font-family:inherit;background:#fcfbfe;}
+  .memo:focus{outline:none;border-color:var(--accent);}
+
+  .result{border-radius:14px;padding:16px;color:#fff;margin:6px 0 8px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .result .code{font-size:34px;font-weight:900;letter-spacing:.04em;line-height:1;}
+  .result .meta{flex:1;min-width:170px;}
+  .result .tname{font-size:18px;font-weight:800;}
+  .result .grp{font-size:12px;opacity:.9;font-weight:700;margin-top:2px;}
+  .result .desc{font-size:12.5px;opacity:.97;margin-top:7px;line-height:1.6;}
+  .clarity-wrap{margin:0 0 14px;}
+  .clarity-badge{display:inline-block;color:#fff;font-weight:800;font-size:12px;padding:5px 11px;border-radius:20px;}
+
+  .diag{margin:0 0 6px;}
+  .diag-toggle{width:100%;text-align:left;background:#f3eef8;color:var(--accent);font-weight:800;font-size:13px;border:1px solid var(--line);}
+  .diag-body{margin-top:10px;background:#fcfbfe;border:1px solid var(--line);border-radius:12px;padding:4px 14px 12px;}
+  .diag-sec{margin-top:12px;}
+  .diag-sec h4{font-size:13px;margin:0 0 5px;color:var(--accent);border-left:3px solid var(--accent);padding-left:7px;}
+  .diag-sec p{font-size:12.7px;line-height:1.72;margin:0;}
+  .diag-sec ul{margin:0;padding-left:18px;}
+  .diag-sec li{font-size:12.7px;line-height:1.7;margin-bottom:4px;}
+
+  .sec-title{font-size:14px;font-weight:800;margin:24px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--line);}
+  .sec-title .sub{font-size:11px;font-weight:600;color:var(--sub);}
+
+  .axis{margin:16px 2px;}
+  .lab-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+  .lab{font-size:14px;font-weight:700;flex:1;}
+  .lab .pct{font-weight:900;}
+  .stag{font-size:10px;font-weight:800;color:#fff;padding:2px 6px;border-radius:6px;margin-left:4px;vertical-align:middle;}
+  .qbtn{width:22px;height:22px;padding:0;border-radius:50%;background:#eceaf3;color:var(--sub);font-weight:800;font-size:13px;line-height:1;}
+  .qbtn:hover{background:var(--accent);color:#fff;}
+  .axis input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:9px;border-radius:6px;background:var(--ac);outline:none;margin:0;}
+  .axis input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;background:#fff;border:3px solid var(--ac);box-shadow:0 1px 4px rgba(0,0,0,.28);cursor:grab;}
+  .axis input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--ac);box-shadow:0 1px 4px rgba(0,0,0,.28);cursor:grab;}
+  .poles{display:flex;justify-content:space-between;font-size:12px;color:var(--sub);margin-top:6px;}
+  .poles b{color:var(--ink);font-weight:700;}
+  .axis-info{display:none;margin-top:9px;background:#faf9fd;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.65;}
+  .axis-info .t{font-weight:800;margin-bottom:3px;}
+  .axis-info .s{color:var(--accent);font-weight:700;}
+
+  .cog-top{font-size:12.5px;color:var(--sub);margin-bottom:10px;}
+  .cog-top b{color:var(--ink);}
+  .cog{margin:9px 0;}
+  .cog-h{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;}
+  .cog-nm{font-weight:800;} .cog-sc{font-weight:900;color:var(--sub);font-size:12px;}
+  .cog-bar{height:9px;border-radius:6px;background:#ececf2;overflow:hidden;margin:3px 0 2px;}
+  .cog-fill{height:100%;border-radius:6px;transition:width .12s;}
+  .cog-d{font-size:11px;color:var(--sub);line-height:1.45;}
+
+  .alt-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;padding:7px 0;border-bottom:1px dashed var(--line);}
+  .alt-axis{font-weight:700;} .alt-arrow{color:var(--sub);} .alt-nm{color:var(--sub);}
+  .sub{color:var(--sub);font-size:12px;}
+
+  .actions{display:flex;gap:8px;margin-top:24px;flex-wrap:wrap;}
+  .cmp-row{display:grid;grid-template-columns:128px 1fr;gap:12px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line);}
+  @media(max-width:760px){.cmp-row{grid-template-columns:90px 1fr;}}
+  .cmp-name{font-weight:700;font-size:13px;display:flex;flex-direction:column;gap:4px;}
+  .cmp-name .cl{font-size:10px;color:var(--sub);font-weight:600;}
+  .cmp-bars{display:flex;flex-direction:column;gap:5px;}
+  .cmp-bar{height:8px;border-radius:5px;position:relative;}
+  .cmp-dot{position:absolute;top:50%;width:13px;height:13px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);}
+  .seg{font-size:11px;color:var(--sub);display:flex;justify-content:space-between;margin-bottom:2px;}
+  .cmp-pick{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+  .cmp-pick select{flex:1;min-width:0;font-family:inherit;font-size:14px;font-weight:700;padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);}
+  .cmp-x{font-weight:800;color:var(--sub);}
+  .compat-head{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:15px;margin:14px 0 12px;}
+  .compat-score{font-size:14px;font-weight:700;margin-bottom:14px;}
+  .compat-score b{font-size:26px;color:var(--accent);vertical-align:-2px;}
+  .cb-row{margin:9px 0;}
+  .cb-l{font-size:12.5px;font-weight:700;display:flex;justify-content:space-between;margin-bottom:3px;}
+  .cb-v{color:var(--accent);font-weight:900;}
+  .cb-bar{height:10px;border-radius:6px;background:#ececf2;overflow:hidden;}
+  .cb-fill{height:100%;background:linear-gradient(90deg,#88619a,#f25e62);border-radius:6px;transition:width .15s;}
+  .ca-row{display:flex;gap:9px;align-items:flex-start;font-size:12.7px;line-height:1.62;padding:8px 0;border-bottom:1px dashed var(--line);}
+  .ca-mk{font-size:15px;flex-shrink:0;}
+  .tabs{display:flex;gap:6px;}
+  .tabs button{background:#fff;color:var(--sub);border:1px solid var(--line);font-weight:700;}
+  .tabs button.on{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .hint{font-size:11px;color:var(--sub);margin-top:18px;line-height:1.7;}
+  input[type=file]{display:none;}
+  #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);
+    background:#2b2b33;color:#fff;font-size:13px;font-weight:700;padding:10px 18px;border-radius:22px;
+    box-shadow:0 4px 16px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:99;}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="logo">M</div>
+    <h1>MBTI 推定ノート</h1>
+    <div class="grow"></div>
+    <div class="tabs">
+      <button id="tabEdit" class="on">編集</button>
+      <button id="tabCmp">比較</button>
+      <button id="tabCompat">相性</button>
+    </div>
+    <button class="ghost mini" id="btnExport">書き出し</button>
+    <button class="ghost mini" id="btnImport">読み込み</button>
+    <input type="file" id="fileImport" accept="application/json">
+  </div>
+
+  <div class="app">
+    <div class="panel">
+      <div class="roster-head">
+        <h2>名簿</h2>
+        <button class="mini" id="btnAdd">＋ 人を追加</button>
+      </div>
+      <div class="roster-list" id="roster"></div>
+    </div>
+    <div class="panel detail" id="detail"></div>
+  </div>
+
+<script>
+const AXES = [
+  {key:'mind',    title:'エネルギー',        left:{l:'E',name:'外向型'},   right:{l:'I',name:'内向型'}, cssc:'--c-mind'},
+  {key:'energy',  title:'意識',              left:{l:'N',name:'直感型'},   right:{l:'S',name:'現実型'}, cssc:'--c-energy'},
+  {key:'nature',  title:'性質',              left:{l:'T',name:'思考型'},   right:{l:'F',name:'感情型'}, cssc:'--c-nature'},
+  {key:'tactics', title:'戦術',              left:{l:'J',name:'計画型'},   right:{l:'P',name:'探索型'}, cssc:'--c-tactics'},
+  {key:'identity',title:'アイデンティティ',  left:{l:'A',name:'自己主張型'},right:{l:'T',name:'激動型'}, cssc:'--c-identity'},
+];
+const AXIS_INFO = {
+  mind:['エネルギーの充電方法と注意の向き先',
+    '外向型(E)：人と関わり外で動くことで元気が湧く。考えるより先に口に出す・行動する',
+    '内向型(I)：一人の時間で回復する。内側で十分考えてから外に出す',
+    '%が高いほどその傾向がハッキリ。50%付近は社交的にも内省的にもなれる中間で、状況で切り替わる'],
+  energy:['情報をどう受け取るか',
+    '直感型(N)：全体像・意味・可能性・未来を見る。「なぜ／もし～なら」が口ぐせ',
+    '現実型(S)：事実・五感・具体・今を見る。「実際どうなのか」を重んじる',
+    '高いほど抽象寄り／具体寄りに振り切る。中間は理屈と現実を両方使い分ける'],
+  nature:['物事をどう判断するか',
+    '思考型(T)：論理・一貫性・効率・公平さで決める。正しさ優先',
+    '感情型(F)：価値観・人への影響・調和で決める。納得や気持ち優先',
+    '高いほど頭／心に寄る。中間は場面で天秤の置き方を変える'],
+  tactics:['外の世界にどう接するか',
+    '計画型(J)：決めて・段取って・終わらせたい。秩序と締切が安心',
+    '探索型(P)：選択肢を開いておき臨機応変に動く。縛られたくない',
+    '高いほど計画的／即興的にハッキリ。中間はゆるく計画しつつ融通もきく'],
+  identity:['自分をどう感じているか（A／T）',
+    '自己主張型(A)：自信があり動じにくい。結果に満足しやすく引きずらない',
+    '激動型(T)：敏感で完璧主義。常に改善を求め、感情が揺れやすい',
+    '高いほど安定／敏感がハッキリ。中間はその時々で揺れる'],
+};
+const TYPES = {
+  INTJ:['建築家','想像力豊かで戦略的、すべてに計画を持つ思想家'],
+  INTP:['論理学者','飽くなき知識欲を持つ革新的な発明家'],
+  ENTJ:['指揮官','大胆で想像力豊か、意志の強い指導者'],
+  ENTP:['討論者','賢くて好奇心旺盛、知的な挑戦を楽しむ'],
+  INFJ:['提唱者','物静かで神秘的だが、人々を強く鼓舞する理想主義者'],
+  INFP:['仲介者','詩的で親切、いつも大義のために動きたい利他家'],
+  ENFJ:['主人公','カリスマ性があり、人を惹きつけ励ますリーダー'],
+  ENFP:['運動家','情熱的で創造力豊か、自由を愛する社交家'],
+  ISTJ:['管理者','実直で事実を重んじる、信頼できる現実家'],
+  ISFJ:['擁護者','献身的で温かく、いつでも誰かを守ろうとする'],
+  ESTJ:['幹部','物事と人をまとめる、優れた管理者'],
+  ESFJ:['領事','思いやり深く社交的、面倒見のいい人気者'],
+  ISTP:['巨匠','大胆で実践的、あらゆる道具を使いこなす実験家'],
+  ISFP:['冒険家','柔軟で魅力的、進んで探求し挑戦する芸術家肌'],
+  ESTP:['起業家','賢くエネルギッシュ、危険を恐れず突き進む'],
+  ESFP:['エンターテイナー','自発的で陽気、周りを楽しませる盛り上げ役'],
+};
+const GROUPS = {分析家:'--g-analyst',外交官:'--g-diplomat',番人:'--g-sentinel',探検家:'--g-explorer'};
+const IDENT = {A:['自己主張型','自信があり、ストレスに強く、結果志向'],T:['激動型','成功を求め、完璧主義で改善を追い続ける']};
+const FN = {
+  Ni:['内向直観','物事の本質や行く先を一つの見通しに収れんさせる'],
+  Ne:['外向直観','可能性やアイデアを次々に広げ、結びつける'],
+  Si:['内向感覚','過去の経験・細部を正確に蓄え、基準にする'],
+  Se:['外向感覚','今この瞬間の現実・刺激に鋭く反応する'],
+  Ti:['内向思考','自分の中の論理体系で正確さと一貫性を突き詰める'],
+  Te:['外向思考','外の世界を効率と成果でシステム化し動かす'],
+  Fi:['内向感情','自分の価値観・本心に正直であろうとする'],
+  Fe:['外向感情','周囲の感情や調和を読み取り、場を整える'],
+};
+const FCOLOR = {Ni:'#7d5ba6',Ne:'#7d5ba6',Si:'#d99a2b',Se:'#d99a2b',Ti:'#3f8fb0',Te:'#3f8fb0',Fi:'#d65d86',Fe:'#d65d86'};
+// 詳しい診断用テキスト
+const POLE_DESC = {
+  E:'人と関わって外で動くほど元気が出る。考える前に口と体が動くタイプ',
+  I:'一人の時間でチャージする派。頭の中で考えてから出すから、人が多いと地味に疲れる',
+  N:'全体像とか「もしこうなったら」を考えるのが好き。逆に細かい反復作業はすぐ飽きる',
+  S:'地に足ついた現実派。「で、実際どうなの？」を大事にして、ふわっとした抽象論は苦手',
+  T:'スジが通ってるかで決める派。情より理屈・効率・公平さを優先しがち',
+  F:'気持ちと納得感で決める派。正論より「みんながどう感じるか」を大事にする',
+  J:'決めて段取って終わらせたい派。計画と締切がある方がむしろ落ち着く',
+  P:'とりあえず開けておいて流れで動く派。ガチガチに決められるのは窮屈',
+};
+const FUNC_STRENGTH = {
+  Ni:'物事の本質とか先の展開を勘でスッと見抜く', Ne:'アイデアと可能性をポンポン出して繋げる',
+  Si:'細かいことや過去の経験を正確に積んで安定運用する', Se:'今この場の状況に即反応してパッと動く',
+  Ti:'スジ道立てて正確に分析する', Te:'ゴールに向けて効率よく段取って人も物も動かす',
+  Fi:'自分の「これは譲れない」がブレない', Fe:'場の空気と人の気持ちを察して丸く収める',
+};
+const FUNC_WEAK = {
+  Ni:'自分の見立てに偏りがちで、説明をすっ飛ばす', Ne:'手を広げすぎて、一個を最後まで仕上げきれない',
+  Si:'前例とか慣れたやり方に固執しがち', Se:'目先の刺激に流されて長期目線が抜けやすい',
+  Ti:'理屈こねすぎて動けなくなる・冷たく見られがち', Te:'結論を急いで、人の気持ちを後回しにしがち',
+  Fi:'感情を内に溜め込んで、周りに伝わりにくい', Fe:'人に合わせすぎて自分を見失いがち',
+};
+
+const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const KEY='mbti_notes_v2';
+let state = load();
+let selId = state.people[0] ? state.people[0].id : null;
+let mode = 'edit';
+let diagOpen = true;
+let compatA = null, compatB = null;
+
+function load(){
+  try{ const j=JSON.parse(localStorage.getItem(KEY)); if(j&&Array.isArray(j.people)) return j; }catch(e){}
+  return {people:[]};
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+function uid(){ return 'p'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36); }
+function newPerson(name){ return {id:uid(), name:name||'名前なし', memo:'', v:{mind:50,energy:50,nature:50,tactics:50,identity:50}}; }
+
+function letterFor(ax,val){ return val<50 ? ax.left.l : ax.right.l; }
+function domFor(ax,val){ const left=val<50; return {name:left?ax.left.name:ax.right.name, pct:left?(100-val):val}; }
+function typeCode(p){
+  const c = AXES.slice(0,4).map(a=>letterFor(a,p.v[a.key])).join('');
+  return {four:c, id:letterFor(AXES[4],p.v.identity), full:c+'-'+letterFor(AXES[4],p.v.identity)};
+}
+function groupOf(four){
+  const se=four[1], tf=four[2], jp=four[3];
+  if(se==='N') return tf==='T' ? '分析家':'外交官';
+  return jp==='J' ? '番人':'探検家';
+}
+function strength(pct){
+  if(pct>=80) return {t:'振り切り', c:'#c0392b'};
+  if(pct>=65) return {t:'しっかり', c:'#2c7a4b'};
+  if(pct>=56) return {t:'やや',     c:'#b8860b'};
+  return {t:'拮抗', c:'#8a8a98'};
+}
+function clarity(p){
+  const core=['mind','energy','nature','tactics'];
+  const avg=core.reduce((s,k)=>s+Math.abs(p.v[k]-50)*2,0)/core.length;
+  let label,c;
+  if(avg>=70){label='くっきり型';c='#2c7a4b';}
+  else if(avg>=40){label='ほどほど';c='#b8860b';}
+  else{label='ふんわり型';c='#8a8a98';}
+  return {score:Math.round(avg),label,c};
+}
+// 8 cognitive functions, continuous score from the 4 core axes (type-dynamics weighted)
+function funcScores(p){
+  const I=p.v.mind/100, E=1-I;
+  const S=p.v.energy/100, N=1-S;
+  const F=p.v.nature/100, T=1-F;
+  const P=p.v.tactics/100, J=1-P;
+  const cat={Ni:N,Ne:N,Si:S,Se:S,Ti:T,Te:T,Fi:F,Fe:F};
+  const eHi = E*1.0 + I*0.7;          // 外向機能の高さ係数（Eなら主機能・Iなら補助）
+  const iHi = I*1.0 + E*0.7;          // 内向機能の高さ係数
+  const h = { eJ:J*eHi, eP:P*eHi, iP:J*iHi, iJ:P*iHi }; // J→外向判断/内向知覚, P→外向知覚/内向判断
+  const combo={Ni:'iP',Si:'iP',Ne:'eP',Se:'eP',Ti:'iJ',Fi:'iJ',Te:'eJ',Fe:'eJ'};
+  return Object.keys(cat).map(nm=>{ const raw=100*cat[nm]*h[combo[nm]]; return {name:nm, score:Math.round(raw), raw}; })
+               .sort((a,b)=>b.raw-a.raw);
+}
+const PERC=['Ni','Ne','Si','Se'], JUDG=['Ti','Te','Fi','Fe'];
+function altTypes(p){
+  const core=AXES.slice(0,4);
+  const base=core.map(a=>letterFor(a,p.v[a.key]));
+  const cands=[];
+  core.forEach((a,i)=>{
+    const val=p.v[a.key];
+    if(Math.abs(val-50)<=10){
+      const f=base.slice();
+      f[i]=(letterFor(a,val)===a.left.l)?a.right.l:a.left.l;
+      const ft=f.join('');
+      cands.push({axis:a.title, type:ft, name:TYPES[ft][0], pct:val<50?100-val:val});
+    }
+  });
+  return cands.sort((x,y)=>x.pct-y.pct);
+}
+function adaptiveDesc(p){
+  const t=typeCode(p), tn=TYPES[t.four], cl=clarity(p);
+  let s = tn[1] + '。';
+  if(cl.score>=70) s+=`型がはっきり出ていて、${t.four}らしさが安定して表れるタイプ。`;
+  else if(cl.score>=40) s+=`おおむね${t.four}だが、場面によって他の面ものぞく。`;
+  else s+=`型はゆるやかで、状況次第でいくつかのタイプを行き来する。`;
+  s+=`<br><b>${IDENT[t.id][0]}</b>：${IDENT[t.id][1]}`;
+  return s;
+}
+
+/* ---------- helpers ---------- */
+function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function hexA(hex,a){ const n=parseInt(hex.slice(1),16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; }
+function shade(hex,p){ let n=parseInt(hex.slice(1),16),r=n>>16&255,g=n>>8&255,b=n&255;
+  const f=t=>Math.max(0,Math.min(255,Math.round(t+(t*p/100)))); return `rgb(${f(r)},${f(g)},${f(b)})`; }
+function axisLabelHTML(ax,val){ const d=domFor(ax,val), st=strength(d.pct);
+  return `${ax.title}：<span class="pct">${d.pct}%</span> ${d.name}<span class="stag" style="background:${st.c}">${st.t}</span>`; }
+function cogHTML(p){
+  const fs=funcScores(p);
+  const topP=fs.filter(f=>PERC.includes(f.name))[0];   // 知覚系トップ
+  const topJ=fs.filter(f=>JUDG.includes(f.name))[0];   // 判断系トップ
+  const pair=[topP,topJ].sort((a,b)=>b.score-a.score).map(f=>`${f.name} ${FN[f.name][0]}`).join(' ／ ');
+  const rows=fs.map(f=>{ const col=FCOLOR[f.name];
+    return `<div class="cog">
+      <div class="cog-h"><span class="cog-nm" style="color:${col}">${f.name}　${FN[f.name][0]}</span><span class="cog-sc">${f.score}</span></div>
+      <div class="cog-bar"><div class="cog-fill" style="width:${f.score}%;background:${col}"></div></div>
+      <div class="cog-d">${FN[f.name][1]}</div></div>`; }).join('');
+  return `<div class="cog-top">軸となる2機能（知覚＋判断）：<b>${pair}</b></div>${rows}`;
+}
+function altHTML(p){
+  const c=altTypes(p);
+  if(!c.length) return `<div class="sub">4つの軸がわりとはっきりしていて、すぐ隣の別タイプは無し。</div>`;
+  return c.map(x=>`<div class="alt-row"><span class="alt-axis">${x.axis}が拮抗(${x.pct}%)</span>
+    <span class="alt-arrow">→ 逆なら</span>
+    <span class="badge" style="background:${cssv(GROUPS[groupOf(x.type)])}">${x.type}</span>
+    <span class="alt-nm">${x.name}</span></div>`).join('');
+}
+
+/* ---------- 詳しい診断（%を織り込む） ---------- */
+function axisReading(ax,val){
+  const left=val<50, pole=left?ax.left:ax.right, pct=left?(100-val):val;
+  if(pct<56) return `<b>${ax.title}</b>：${ax.left.name}と${ax.right.name}のどっちにも転べる中間（${pct}%）。状況次第で両方使い分ける、決めつけにくいとこ。`;
+  const intens = pct>=80?'かなり強めの':(pct>=65?'しっかり':'ちょい');
+  return `<b>${ax.title}</b>：${intens}<b>${pole.name}</b>（${pct}%）。${POLE_DESC[pole.l]}。`;
+}
+function diagOverview(p){
+  const t=typeCode(p), tn=TYPES[t.four], cl=clarity(p), fs=funcScores(p), dom=fs[0];
+  let strong=null, weak=null;
+  AXES.slice(0,4).forEach(a=>{ const d=domFor(a,p.v[a.key]);
+    if(!strong||d.pct>strong.pct) strong={name:d.name,pct:d.pct};
+    if(!weak||d.pct<weak.pct) weak={name:d.name,pct:d.pct}; });
+  let s=`<b>${t.full}・${tn[0]}</b>（${groupOf(t.four)}グループ）。${tn[1]}って感じ。`;
+  if(cl.score>=70) s+=`4軸ともしっかり振り切ってる<b>くっきり型</b>（くっきり度${cl.score}）で、${t.four}らしさが安定して出るタイプ。`;
+  else if(cl.score>=40) s+=`振れ方は中くらいの<b>ほどほど型</b>（くっきり度${cl.score}）。ベースは${t.four}だけど、場面で別の顔も出る。`;
+  else s+=`軸が中央寄りで<b>ふんわり型</b>（くっきり度${cl.score}）。${t.four}を芯にしつつ、状況でいろんなタイプを行き来する掴みどころのなさがある。`;
+  s+=`<br>一番ハッキリ出てるのは<b>${strong.name}（${strong.pct}%）</b>、逆に揺れてるのは<b>${weak.name}（${weak.pct}%）</b>あたり。`;
+  s+=`心のエンジンになってるのは<b>${dom.name}（${FN[dom.name][0]}）</b>＝${FN[dom.name][1]}。`;
+  return s;
+}
+function diagStrength(p){
+  const fs=funcScores(p);
+  const tp=fs.filter(f=>PERC.includes(f.name))[0], tj=fs.filter(f=>JUDG.includes(f.name))[0];
+  const it=[tp,tj].sort((a,b)=>b.raw-a.raw).map(f=>`<b>${f.name}</b>：${FUNC_STRENGTH[f.name]}`);
+  if(letterFor(AXES[4],p.v.identity)==='A' && domFor(AXES[4],p.v.identity).pct>=65)
+    it.push('プレッシャーに強くて、失敗や批判を引きずらず前に進める');
+  return '<ul>'+it.map(i=>`<li>${i}</li>`).join('')+'</ul>';
+}
+function diagWeak(p){
+  const fs=funcScores(p), inf=fs[fs.length-1];
+  const it=[`苦手になりやすいのは：${FUNC_WEAK[inf.name]}（最下位の<b>${inf.name}</b>）`];
+  let ex=null;
+  AXES.slice(0,4).forEach(a=>{ const d=domFor(a,p.v[a.key]);
+    if(d.pct>=80 && (!ex||d.pct>ex.pct)){ const opp=(letterFor(a,p.v[a.key])===a.left.l)?a.right.name:a.left.name; ex={pole:d.name,pct:d.pct,opp}; } });
+  if(ex) it.push(`<b>${ex.pole}</b>に振り切ってる（${ex.pct}%）ぶん、${ex.opp}的な見方が抜けがち`);
+  if(letterFor(AXES[4],p.v.identity)==='T' && domFor(AXES[4],p.v.identity).pct>=65)
+    it.push('激動型が強めで、完璧主義で自分を追い込みやすい・人の評価に揺れやすい');
+  return '<ul>'+it.map(i=>`<li>${i}</li>`).join('')+'</ul>';
+}
+function diagIdentity(p){
+  const id=letterFor(AXES[4],p.v.identity), d=domFor(AXES[4],p.v.identity);
+  if(d.pct<56) return `自己主張型と激動型のちょうど中間（${d.pct}%）。基本は落ち着いてるけど、状況によっては敏感に揺れることもある。`;
+  const intens=d.pct>=80?'かなり強めの':(d.pct>=65?'しっかり':'ちょい');
+  if(id==='A') return `${intens}<b>自己主張型</b>（${d.pct}%）。自信があって動じにくいし、失敗や人の評価を引きずらない。裏を返すと、危機感とか自己点検が薄くなりがち。`;
+  return `${intens}<b>激動型</b>（${d.pct}%）。「もっと良くしたい」が強くて伸びしろ意欲は高い。けど自分を追い込みやすくて、感情が揺れやすい面も。`;
+}
+function generateDiag(p){
+  return `<div class="diag-sec"><h4>総評</h4><p>${diagOverview(p)}</p></div>
+    <div class="diag-sec"><h4>4つの軸の読み（%を反映）</h4><ul>${AXES.slice(0,4).map(ax=>`<li>${axisReading(ax,p.v[ax.key])}</li>`).join('')}</ul></div>
+    <div class="diag-sec"><h4>強みとして出やすい</h4>${diagStrength(p)}</div>
+    <div class="diag-sec"><h4>つまずきやすい</h4>${diagWeak(p)}</div>
+    <div class="diag-sec"><h4>自己認識（A／T）</h4><p>${diagIdentity(p)}</p></div>`;
+}
+// AIに深掘り分析させる用のテキストを整形してコピー
+function aiPromptFor(p){
+  const t=typeCode(p), tn=TYPES[t.four], cl=clarity(p), fs=funcScores(p);
+  const axes=AXES.map(ax=>{const d=domFor(ax,p.v[ax.key]); return `${d.name}${d.pct}%`;}).join(' / ');
+  const funcs=fs.map(f=>`${f.name}${f.score}`).join(' ');
+  return `【MBTI推定メモ：${p.name}】
+タイプ：${t.full}（${tn[0]}・${groupOf(t.four)}グループ）／ くっきり度 ${cl.score}（${cl.label}）
+5軸：${axes}
+認知機能スコア：${funcs}
+メモ：${p.memo||'(なし)'}
+
+↑この人の人となりを、%の強弱まで踏まえて出来る限り詳しく深掘り分析して。`;
+}
+function copyText(txt){
+  let ok=false;
+  try{ const ta=document.createElement('textarea'); ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.focus(); ta.select(); ok=document.execCommand('copy'); document.body.removeChild(ta); }catch(e){}
+  if(ok){ toast('コピーした！AIチャットに貼って'); return; }
+  if(navigator.clipboard){ navigator.clipboard.writeText(txt).then(()=>toast('コピーした！AIチャットに貼って')).catch(()=>showCopyFallback(txt)); }
+  else showCopyFallback(txt);
+}
+function showCopyFallback(txt){ window.prompt('下のテキストをコピーしてAIに貼ってね（Ctrl+C）', txt); }
+function toast(msg){
+  let el=document.getElementById('toast');
+  if(!el){ el=document.createElement('div'); el.id='toast'; document.body.appendChild(el); }
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),1900);
+}
+
+/* ---------- rendering ---------- */
+const elRoster=document.getElementById('roster');
+const elDetail=document.getElementById('detail');
+
+function renderRoster(){
+  elRoster.innerHTML='';
+  if(!state.people.length){ elRoster.innerHTML='<div class="empty">まだ誰もいません。<br>「＋ 人を追加」から始めよう。</div>'; return; }
+  state.people.forEach(p=>{
+    const t=typeCode(p), col=cssv(GROUPS[groupOf(t.four)]);
+    const row=document.createElement('div');
+    row.className='person'+(p.id===selId&&mode==='edit'?' active':'');
+    row.innerHTML=`<span class="nm"></span><span class="badge" style="background:${col}">${t.full}</span><button class="del" title="削除">×</button>`;
+    row.querySelector('.nm').textContent=p.name;
+    row.onclick=e=>{ if(e.target.classList.contains('del'))return; selId=p.id; mode='edit'; setTab('edit'); render(); };
+    row.querySelector('.del').onclick=e=>{ e.stopPropagation();
+      if(confirm(`「${p.name}」を削除しますか？`)){ state.people=state.people.filter(x=>x.id!==p.id);
+        if(selId===p.id) selId=state.people[0]?state.people[0].id:null; save(); render(); } };
+    elRoster.appendChild(row);
+  });
+}
+
+function renderDetail(){
+  if(mode==='compare'){ renderCompare(); return; }
+  if(mode==='compat'){ renderCompat(); return; }
+  const p=state.people.find(x=>x.id===selId);
+  if(!p){ elDetail.innerHTML='<div class="empty">左の名簿から人を選ぶか、新しく追加してください。</div>'; return; }
+
+  let html=`<div class="namerow"><input class="nameInput" id="nameI" placeholder="名前"></div>
+    <textarea class="memo" id="memoI" placeholder="メモ（関係・第一印象・推定の根拠など）"></textarea>
+    <div class="result" id="resultCard">
+      <div class="code"></div>
+      <div class="meta"><div class="tname"></div><div class="grp"></div><div class="desc"></div></div>
+    </div>
+    <div class="clarity-wrap"><span class="clarity-badge" id="clarityBadge"></span></div>
+
+    <div class="diag">
+      <button class="diag-toggle" id="diagToggle"></button>
+      <div class="diag-body" id="diagBody"></div>
+    </div>
+
+    <div class="sec-title">5つの軸 <span class="sub">（直感でスライダーを動かす・「?」で意味）</span></div>`;
+
+  AXES.forEach(ax=>{
+    const col=cssv(ax.cssc), info=AXIS_INFO[ax.key];
+    html+=`<div class="axis" style="--ac:${col}">
+      <div class="lab-row"><div class="lab" style="color:${col}"></div><button class="qbtn" title="説明">?</button></div>
+      <input type="range" min="0" max="100" value="${p.v[ax.key]}" data-k="${ax.key}">
+      <div class="poles"><b>${ax.left.name}</b><b>${ax.right.name}</b></div>
+      <div class="axis-info"><div class="t">${info[0]}</div>${info[1]}<br>${info[2]}<br><span class="s">強さの読み方：</span>${info[3]}</div>
+    </div>`;
+  });
+
+  html+=`<div class="sec-title">認知機能スコア <span class="sub">（軸の%から算出／拮抗だと機能も拮抗する）</span></div>
+      <div id="cogSection"></div>
+    <div class="sec-title">なりうる別タイプ <span class="sub">（50%近い軸が逆に転んだ場合）</span></div>
+      <div id="altSection"></div>
+    <div class="actions">
+      <button id="copyAiBtn">📋 AIで深掘り分析（コピー）</button>
+      <button class="ghost" id="dupBtn">複製</button>
+      <button class="ghost" id="delBtn" style="color:#e0484d">この人を削除</button>
+    </div>
+    <div class="hint">スライダーは「左右どちらにどれくらい寄っているか」を直感で。振り切るほど%が伸び、強さラベルと認知機能・くっきり度に反映される。<br>
+    保存は自動。端末を移すときは右上「書き出し」でJSON保存→別端末で「読み込み」。</div>`;
+
+  elDetail.innerHTML=html;
+  const nameI=document.getElementById('nameI'); nameI.value=p.name;
+  nameI.oninput=()=>{ p.name=nameI.value; save(); renderRoster(); };
+  const memoI=document.getElementById('memoI'); memoI.value=p.memo||'';
+  memoI.oninput=()=>{ p.memo=memoI.value; save(); };
+  elDetail.querySelectorAll('input[type=range]').forEach(r=>{
+    r.oninput=()=>{ p.v[r.dataset.k]=+r.value; save(); updateDynamic(p); renderRoster(); }; });
+  elDetail.querySelectorAll('.qbtn').forEach(b=>{ b.onclick=()=>{ const d=b.closest('.axis').querySelector('.axis-info');
+    d.style.display=(d.style.display==='block')?'none':'block'; }; });
+  document.getElementById('dupBtn').onclick=()=>{ const c=JSON.parse(JSON.stringify(p)); c.id=uid(); c.name=p.name+'（コピー）';
+    state.people.push(c); selId=c.id; save(); render(); };
+  document.getElementById('delBtn').onclick=()=>{ if(confirm(`「${p.name}」を削除しますか？`)){
+    state.people=state.people.filter(x=>x.id!==p.id); selId=state.people[0]?state.people[0].id:null; save(); render(); } };
+  document.getElementById('diagToggle').onclick=()=>{ diagOpen=!diagOpen; paintDiagToggle(); };
+  document.getElementById('copyAiBtn').onclick=()=>copyText(aiPromptFor(p));
+
+  updateDynamic(p);
+}
+function paintDiagToggle(){
+  const dt=document.getElementById('diagToggle'); if(!dt) return;
+  dt.textContent = diagOpen ? '📖 詳しい診断を隠す ▴' : '📖 詳しい診断を見る ▾';
+  document.getElementById('diagBody').style.display = diagOpen ? 'block' : 'none';
+}
+
+function updateDynamic(p){
+  const t=typeCode(p), g=groupOf(t.four), col=cssv(GROUPS[g]), tn=TYPES[t.four], cl=clarity(p);
+  const card=document.getElementById('resultCard');
+  card.style.background=`linear-gradient(135deg,${col},${shade(col,-18)})`;
+  card.querySelector('.code').textContent=t.full;
+  card.querySelector('.tname').textContent=`${tn[0]}・${IDENT[t.id][0]}`;
+  card.querySelector('.grp').textContent=`${g}グループ`;
+  card.querySelector('.desc').innerHTML=adaptiveDesc(p);
+  const cb=document.getElementById('clarityBadge');
+  cb.textContent=`くっきり度 ${cl.score} ／ ${cl.label}`; cb.style.background=cl.c;
+  const labs=elDetail.querySelectorAll('.axis .lab');
+  AXES.forEach((ax,i)=>{ labs[i].innerHTML=axisLabelHTML(ax,p.v[ax.key]); });
+  document.getElementById('cogSection').innerHTML=cogHTML(p);
+  document.getElementById('altSection').innerHTML=altHTML(p);
+  document.getElementById('diagBody').innerHTML=generateDiag(p);
+  paintDiagToggle();
+}
+
+function renderCompare(){
+  if(!state.people.length){ elDetail.innerHTML='<div class="empty">比較する人がいません。</div>'; return; }
+  let html=`<div style="font-weight:800;font-size:16px;margin-bottom:4px;">比較ビュー</div>
+    <div class="hint" style="margin:0 0 12px">各バーの白丸が、その軸での立ち位置。中央＝拮抗、端＝振り切り。色は16personalitiesと同じ。</div>`;
+  state.people.forEach(p=>{
+    const t=typeCode(p), col=cssv(GROUPS[groupOf(t.four)]), cl=clarity(p);
+    let bars='';
+    AXES.forEach(ax=>{ const c=cssv(ax.cssc);
+      bars+=`<div class="cmp-bar" style="background:${hexA(c,.22)}"><div class="cmp-dot" style="left:${p.v[ax.key]}%;border:2px solid ${c}"></div></div>`; });
+    html+=`<div class="cmp-row">
+      <div class="cmp-name"><span>${esc(p.name)}</span>
+        <span class="badge" style="background:${col};align-self:flex-start">${t.full}</span>
+        <span class="cl">くっきり度 ${cl.score}</span></div>
+      <div class="cmp-bars">
+        <div class="seg"><span>外向/直感/思考/計画/主張</span><span>内向/現実/感情/探索/激動</span></div>${bars}</div>
+    </div>`;
+  });
+  elDetail.innerHTML=html;
+}
+
+/* ---------- 相性 ---------- */
+function compatScores(a,b){
+  const g=k=>Math.abs(a.v[k]-b.v[k]);
+  const gNS=g('energy'), gTF=g('nature'), gJP=g('tactics'), gEI=g('mind');
+  const smooth = Math.max(0,Math.round(100-(gNS*0.30+gTF*0.30+gJP*0.30+gEI*0.10)));
+  const complement = Math.min(100,Math.round(gTF*0.5+gEI*0.3+gNS*0.2));
+  return {smooth,complement};
+}
+function compatLabel(sc){
+  if(sc.smooth>=68 && sc.complement<35) return '似た者同士・安定型';
+  if(sc.smooth>=58 && sc.complement>=42) return '好相性・噛み合いつつ補える';
+  if(sc.smooth<48 && sc.complement>=48) return '凸凹補完型（違いを活かせるかが鍵）';
+  if(sc.smooth<48) return '要すり合わせ型';
+  return 'バランス型';
+}
+function perAxisCompat(a,b){
+  const L=(i,p)=>letterFor(AXES[i],p.v[AXES[i].key]);
+  const o=[];
+  let la=L(0,a),lb=L(0,b);
+  o.push(la===lb?(la==='I'?{x:'エネルギー',m:'🟢',t:'二人とも内向＝静かで落ち着いた時間を心地よく共有できる。外の予定や社交を誰が回すかは課題になりがち'}
+    :{x:'エネルギー',m:'🟢',t:'外向同士で活発・賑やか。反面、二人とも一人でゆっくりの時間が不足しやすい'})
+    :{x:'エネルギー',m:'🔵',t:'片方が外で動き、片方が内で受け止める。社交と休息の役割分担がしやすい補完ペア'});
+  la=L(1,a);lb=L(1,b);
+  o.push(la===lb?(la==='N'?{x:'意識',m:'🟢',t:'抽象・将来・「もし〜なら」の話で盛り上がれる。会話のレイヤーが合う'}
+    :{x:'意識',m:'🟢',t:'現実的・具体的な話が噛み合い、地に足ついた生活を作りやすい'})
+    :{x:'意識',m:'🔵',t:'片方は理想・可能性、片方は現実・具体。噛み合わない時もあるが互いの抜けを補える'});
+  la=L(2,a);lb=L(2,b);
+  o.push(la===lb?(la==='T'?{x:'性質',m:'🟡',t:'論理ベースでドライに会話できて楽。ただし感情のケアは二人とも薄くなりがち'}
+    :{x:'性質',m:'🟢',t:'気持ちを大事にし合える温かい関係。反面、厳しい決断や問題解決が後回しになりやすい'})
+    :{x:'性質',m:'🔵',t:'片方が論理・片方が共感。バランスは取れるが「冷たい／感情的すぎ」のすれ違いが起きる定番ポイント'});
+  la=L(3,a);lb=L(3,b);
+  o.push(la===lb?(la==='J'?{x:'戦術',m:'🟢',t:'計画・段取り・締切感が揃い、生活がスムーズに回る'}
+    :{x:'戦術',m:'🟡',t:'互いに自由で縛らないのが楽。でも「誰も段取らない」で物事が進まない問題も'})
+    :{x:'戦術',m:'🟡',t:'計画派と即興派。予定・片付け・決断スピードで最もぶつかりやすい摩擦点。簡単なルールを決めると楽'});
+  la=L(4,a);lb=L(4,b);
+  o.push(la===lb?(la==='A'?{x:'アイデンティティ',m:'🟢',t:'二人とも動じず安定。穏やかな反面、細かい感情の機微を取りこぼさない意識を'}
+    :{x:'アイデンティティ',m:'🟡',t:'二人とも繊細＝不安や落ち込みが連鎖しやすい。意識して安心を作り合うのが鍵'})
+    :{x:'アイデンティティ',m:'🔵',t:'自己主張型が土台になり激動型の繊細さを支える好相性。ただし直球が繊細側に刺さりすぎないよう注意'});
+  return o;
+}
+function cbar(label,val){ return `<div class="cb-row"><div class="cb-l">${label}<span class="cb-v">${val}</span></div><div class="cb-bar"><div class="cb-fill" style="width:${val}%"></div></div></div>`; }
+function aiPromptPair(a,b){
+  const fmt=p=>{const t=typeCode(p),cl=clarity(p),ax=AXES.map(x=>{const d=domFor(x,p.v[x.key]);return `${d.name}${d.pct}%`;}).join('/');
+    return `${p.name}：${t.full}（${TYPES[t.four][0]}）くっきり度${cl.score}／${ax}／メモ:${p.memo||'なし'}`;};
+  return `【MBTI相性メモ】\n①${fmt(a)}\n②${fmt(b)}\n\n↑この二人の相性を、%の強弱まで踏まえて深掘り分析して（噛み合う所・すれ違う所・うまくやるコツ）。`;
+}
+function renderCompat(){
+  if(state.people.length<2){ elDetail.innerHTML='<div class="empty">2人以上登録すると相性が見られます。<br>「編集」タブから人を追加してね。</div>'; return; }
+  if(!state.people.find(x=>x.id===compatA)) compatA=state.people[0].id;
+  if(!state.people.find(x=>x.id===compatB)) compatB=state.people[1].id;
+  const opt=sel=>state.people.map(p=>`<option value="${p.id}" ${p.id===sel?'selected':''}>${esc(p.name)}</option>`).join('');
+  elDetail.innerHTML=`<div class="cmp-pick"><select id="selA">${opt(compatA)}</select><span class="cmp-x">×</span><select id="selB">${opt(compatB)}</select></div><div id="compatBody"></div>`;
+  document.getElementById('selA').onchange=e=>{compatA=e.target.value; paintCompat();};
+  document.getElementById('selB').onchange=e=>{compatB=e.target.value; paintCompat();};
+  paintCompat();
+}
+function paintCompat(){
+  const a=state.people.find(x=>x.id===compatA), b=state.people.find(x=>x.id===compatB);
+  const body=document.getElementById('compatBody');
+  if(!a||!b){ body.innerHTML=''; return; }
+  if(a.id===b.id){ body.innerHTML='<div class="sub" style="margin-top:16px">同じ人どうしは比べられません。別の人を選んでね。</div>'; return; }
+  const sc=compatScores(a,b), overall=Math.round(sc.smooth*0.7+sc.complement*0.3);
+  const ta=typeCode(a), tb=typeCode(b);
+  body.innerHTML=`<div class="compat-head">
+      <span class="badge" style="background:${cssv(GROUPS[groupOf(ta.four)])}">${ta.full}</span><b>${esc(a.name)}</b>
+      <span class="cmp-x">×</span>
+      <b>${esc(b.name)}</b><span class="badge" style="background:${cssv(GROUPS[groupOf(tb.four)])}">${tb.full}</span>
+    </div>
+    <div class="compat-score">相性スコア <b>${overall}</b> <span class="sub">／ ${compatLabel(sc)}</span></div>
+    ${cbar('噛み合い度（似てて楽）',sc.smooth)}
+    ${cbar('補い合い度（違いを活かせる）',sc.complement)}
+    <div class="sec-title" style="margin-top:18px">軸ごとの相性 <span class="sub">🟢合う ／ 🔵補い合う ／ 🟡注意</span></div>
+    ${perAxisCompat(a,b).map(r=>`<div class="ca-row"><span class="ca-mk">${r.m}</span><div><b>${r.x}</b>：${r.t}</div></div>`).join('')}
+    <div class="actions"><button id="copyPairBtn">📋 AIで相性を深掘り（コピー）</button></div>
+    <div class="hint">スコアはざっくり目安。違い＝悪いではなく、噛み合い度が低くても補い合い度が高ければ良コンビ。深掘りは上のボタン→AIに貼って。</div>`;
+  document.getElementById('copyPairBtn').onclick=()=>copyText(aiPromptPair(a,b));
+}
+
+function render(){ renderRoster(); renderDetail(); }
+
+/* ---------- top bar ---------- */
+function setTab(m){ mode=m;
+  document.getElementById('tabEdit').classList.toggle('on',m==='edit');
+  document.getElementById('tabCmp').classList.toggle('on',m==='compare');
+  document.getElementById('tabCompat').classList.toggle('on',m==='compat'); }
+document.getElementById('tabEdit').onclick=()=>{ setTab('edit'); render(); };
+document.getElementById('tabCmp').onclick=()=>{ setTab('compare'); render(); };
+document.getElementById('tabCompat').onclick=()=>{ setTab('compat'); render(); };
+document.getElementById('btnAdd').onclick=()=>{ const p=newPerson('新しい人 '+(state.people.length+1));
+  state.people.push(p); selId=p.id; setTab('edit'); save(); render();
+  setTimeout(()=>{ const n=document.getElementById('nameI'); if(n){n.focus();n.select();} },30); };
+document.getElementById('btnExport').onclick=()=>{ const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='mbti_notes.json'; a.click(); URL.revokeObjectURL(a.href); };
+document.getElementById('btnImport').onclick=()=>document.getElementById('fileImport').click();
+document.getElementById('fileImport').onchange=e=>{ const f=e.target.files[0]; if(!f)return; const rd=new FileReader();
+  rd.onload=()=>{ try{ const j=JSON.parse(rd.result); if(!j.people||!Array.isArray(j.people)) throw 0;
+    if(confirm('読み込むと現在のデータに追加されます。続けますか？')){ j.people.forEach(p=>{ p.id=uid(); state.people.push(p); }); save(); render(); }
+  }catch(err){ alert('読み込めませんでした（JSON形式が不正です）'); } e.target.value=''; };
+  rd.readAsText(f); };
+
+render();
+</script>
+</body>
+</html>
